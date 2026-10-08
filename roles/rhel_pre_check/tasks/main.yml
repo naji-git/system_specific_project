@@ -1,14 +1,6 @@
----
-- name: 事前リソース使用状況確認
-  include_role:
-    name: common_role
-    tasks_from: check_resource_usage
+- name: 事前確認の実行
+  ansible.builtin.include_role:
+    name: pre_check
 
-- name: 事前システム状態確認
-  include_role:
-    name: common_role
-    tasks_from: check_system_status
-
-- name: システム個別手順の実行
-  include_tasks: system_tasks.yml
-
+#- name: システム個別手順の実行
+#  ansible.builtin.include_tasks: system_tasks.yml
