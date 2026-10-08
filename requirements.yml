@@ -1,6 +1,0 @@
----
-roles:
-  - name: common_role
-    src: https://github.com/naji-git/common_project.git
-    scm: git
-    version: main
