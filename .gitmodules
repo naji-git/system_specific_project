@@ -1,0 +1,3 @@
+[submodule "common_roles/common_project"]
+	path = common_roles/common_project
+	url = https://github.com/naji-git/common_project.git
