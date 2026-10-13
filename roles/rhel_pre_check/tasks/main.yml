@@ -1,6 +1,7 @@
-- name: 事前確認の実行
+# system_specific_project/roles/rhel_pre_check/tasks/main.yml
+- name: 共通事後確認の実行
   ansible.builtin.include_role:
-    name: pre_check
+    name: "{{ playbook_dir }}/common_roles/common_project/roles/rhel_pre_check"
 
 #- name: システム個別手順の実行
 #  ansible.builtin.include_tasks: system_tasks.yml
