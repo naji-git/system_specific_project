@@ -2,5 +2,5 @@
 - hosts: all
   gather_facts: true
   roles:
-    - rhel_pre_check
+    - rhel_post_check
     
