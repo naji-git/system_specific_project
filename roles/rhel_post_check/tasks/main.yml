@@ -1,0 +1,6 @@
+- name: 事前確認の実行
+  ansible.builtin.include_role:
+    name: rhel_post_check
+
+#- name: システム個別手順の実行
+#  ansible.builtin.include_tasks: system_tasks.yml
