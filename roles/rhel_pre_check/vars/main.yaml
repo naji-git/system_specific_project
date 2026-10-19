@@ -1,4 +1,6 @@
+---
 # 各リソースの許容上限使用率 (%)
-threshold_cpu_usage: 95
-threshold_mem_usage: 95
-threshold_disk_usage: 90
+rhel_post_check_threshold_cpu_usage: 95
+rhel_post_check_threshold_mem_usage: 95
+rhel_post_check_threshold_disk_usage: 90
+

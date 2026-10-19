@@ -1,4 +1,19 @@
+---
 # 各リソースの許容上限使用率 (%)
-threshold_cpu_usage: 95
-threshold_mem_usage: 95
-threshold_disk_usage: 90
+rhel_post_check_threshold_cpu_usage: 95
+rhel_post_check_threshold_mem_usage: 95
+rhel_post_check_threshold_disk_usage: 90
+
+# SAM監視ログで除外（問題なし）とする正規表現パターンリスト
+rhel_post_check_sam_log_ignore_patterns:
+  - 'newrelic-infra-service.*failed to flush chunk'
+  - 'dracut.*Including module: microcode_ctl-fw_dir_override'
+  - 'newrelic-infra-service.*commands poll failed.*status:503'
+  - '\[一気通貫\]ヘルスチェックコマンドが異常終了しました'
+  - '最大ヒープサイズの取得に失敗しました'
+  - 'WARNING \[javax\.enterprise\.resource\.webcontainer\.jsf\.config\]'
+  - 'platform-python'
+  - '\[java -D\[jboss.*\]\]が停止しています。'
+  - '\[httpd.*\]Apacheは起動状態のため、正常終了します'
+  - 'jbo_stp\.sh.*JBossEAPは停止状態のため、正常終了します'
+  - 'jbo_str\.sh.*JBossEAPは起動状態のため、正常終了します'
