@@ -17,3 +17,6 @@ rhel_post_check_sam_log_ignore_patterns:
   - '\[httpd.*\]Apacheは起動状態のため、正常終了します'
   - 'jbo_stp\.sh.*JBossEAPは停止状態のため、正常終了します'
   - 'jbo_str\.sh.*JBossEAPは起動状態のため、正常終了します'
+  - 'host-metering-proxy-setup\.sh.*TLS handshake timeout'
+  - '\[/opt/jboss/jbcs-httpd24-2\.4/.*\]が停止しています。'
+  - '\[java -D.*jboss.*\]が停止しています。'
