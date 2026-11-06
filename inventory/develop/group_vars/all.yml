@@ -1,8 +1,8 @@
 ---
 # develop環境かどうかを判定するフラグ
 # httpd/jboss起動状態の保存・復元処理(新処理)を使うかどうかの切り分けに利用する
-is_develop_env: true
-#is_develop_env: false
+#is_develop_env: true
+is_develop_env: false
 
 rhel_pre_check_httpd_services:
   - httpd
