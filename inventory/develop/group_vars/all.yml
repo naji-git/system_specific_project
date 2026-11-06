@@ -23,6 +23,7 @@ is_develop_env: false
 rhel_pre_check_stop_services:
   - httpd
   - jboss-as-standalone1
+rhel_post_check_stop_services: "{{ rhel_pre_check_stop_services}}"
 ###ここまで
 
 # ヘルスチェック(Apache経由)
