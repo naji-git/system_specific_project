@@ -4,17 +4,27 @@
 #is_develop_env: true
 is_develop_env: false
 
-rhel_pre_check_httpd_services:
-  - httpd
+###is_develop_env: trueの有効化
+
+#rhel_pre_check_httpd_services:
+#  - httpd
   
-rhel_pre_check_jboss_services:
-  - jboss-as-standalone1
+#rhel_pre_check_jboss_services:
+#  - jboss-as-standalone1
 
 # httpd/jbossサービス一覧(再起動前後の起動状態保持対象)は
 # グループごとに group_vars/<グループ名>/all.yml の rhel_pre_check_httpd_services / rhel_pre_check_jboss_services で定義する
-rhel_post_check_httpd_services: "{{ rhel_pre_check_httpd_services }}"
-rhel_post_check_jboss_services: "{{ rhel_pre_check_jboss_services }}"
- 
+#rhel_post_check_httpd_services: "{{ rhel_pre_check_httpd_services }}"
+#rhel_post_check_jboss_services: "{{ rhel_pre_check_jboss_services }}"
+
+###ここまで
+
+###is_develop_env: falseのときのみ有効化(検証のみ設定)
+rhel_pre_check_stop_services:
+  - httpd
+  - jboss-as-standalone1
+###ここまで
+
 # ヘルスチェック(Apache経由)
 rhel_post_check_health_chk_paths:
   - /program/main/infra/batch/bin/com_health_chk.sh
