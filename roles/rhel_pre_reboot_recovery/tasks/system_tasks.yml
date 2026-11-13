@@ -1,0 +1,66 @@
+---
+ 
+# name のみを指定した systemd モジュールはサービスの状態を変更せず、status に現在の状態を返す
+- name: chronydサービスの稼働状態を取得する
+  ansible.builtin.systemd:
+    name: chronyd
+  register: __rhel_post_check_chronyd_status
+ 
+- name: chronydサービスの稼働を確認し、停止している場合は再起動する
+  vars:
+    __rhel_post_check_chronyd_running: >-
+      {{ (__rhel_post_check_chronyd_status['status']['ActiveState'] | default('')) == 'active' }}
+  block:
+    - name: chronydサービスの稼働中を通知する
+      ansible.builtin.debug:
+        msg: "chronyd サービス稼働中"
+      when: __rhel_post_check_chronyd_running | bool
+ 
+    - name: chronydサービスを起動して再確認する
+      when: not (__rhel_post_check_chronyd_running | bool)
+      block:
+        - name: chronydサービスの停止を通知する
+          ansible.builtin.debug:
+            msg: "chronyd サービス停止の為、起動"
+ 
+        - name: chronydサービスの再起動を試行する
+          block:
+            - name: chronydサービスを再起動する
+              ansible.builtin.systemd:
+                name: chronyd
+                state: restarted
+              become: true
+          # 再起動に失敗しても異常終了させず、エラー内容を表示して後続の再確認に進むため rescue を使用する
+          rescue:
+            - name: chronydサービスの再起動エラー内容を表示する
+              ansible.builtin.debug:
+                msg: "chronyd サービスの再起動でエラーが発生しました: {{ ansible_failed_result['msg'] | default('メッセージなし') }}"
+ 
+        # 再起動直後は状態が確定していない場合があるため、少し待ってから再確認する
+        - name: chronydサービスの状態が安定するまで待機する
+          ansible.builtin.pause:
+            seconds: 5
+ 
+        - name: chronydサービスの稼働状態を再取得する
+          ansible.builtin.systemd:
+            name: chronyd
+          register: __rhel_post_check_chronyd_status_after
+ 
+        - name: chronydサービスの再確認結果を判定して表示する
+          vars:
+            __rhel_post_check_chronyd_running_after: >-
+              {{ (__rhel_post_check_chronyd_status_after['status']['ActiveState'] | default('')) == 'active' }}
+          block:
+            - name: chronydサービスの稼働中を通知する
+              ansible.builtin.debug:
+                msg: "chronyd サービス稼働中"
+              when: __rhel_post_check_chronyd_running_after | bool
+ 
+            # 起動に失敗してもロールは異常終了させず、確認方法を表示して後続の処理を継続する
+            - name: chronydサービスの起動失敗を通知する
+              ansible.builtin.debug:
+                msg: >-
+                  chronyd サービスの起動処理に失敗しました。
+                  対象サーバで systemctl status chronyd で状態を確認してください。
+              when: not (__rhel_post_check_chronyd_running_after | bool)
+

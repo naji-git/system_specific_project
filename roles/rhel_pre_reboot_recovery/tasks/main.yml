@@ -1,0 +1,7 @@
+# system_specific_project/roles/rhel_pre_reboot_recovery/tasks/main.yml
+- name: 共通事前確認の実行
+  ansible.builtin.include_role:
+    name: "{{ playbook_dir }}/common_roles/common_project/roles/rhel_pre_reboot_recovery"
+
+- name: システム個別手順の実行
+  ansible.builtin.include_tasks: system_tasks.yml

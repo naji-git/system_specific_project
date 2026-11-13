@@ -1,6 +1,0 @@
----
-# 各リソースの許容上限使用率 (%)
-rhel_pre_check_threshold_cpu_usage: 85
-rhel_pre_check_threshold_mem_usage: 85
-rhel_pre_check_threshold_disk_usage: 85
-
