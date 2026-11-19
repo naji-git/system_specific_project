@@ -3,7 +3,7 @@
 # 1. パッチ適用対象の確認
 #   patch_directory 内に python-urllib3 の rpm が無い場合は、以降の処理を実施せず終了する
 # ==================================================
- 
+
 # --------------------------------------------------
 # 1-1. python-urllib3 の rpm の検索
 # --------------------------------------------------
@@ -14,12 +14,12 @@
     file_type: file
     recurse: false
   register: __rhel_pre_reboot_recovery_urllib3_rpm_search
- 
+
 - name: python-urllib3 がパッチ適用対象に含まれない場合は処理を実施しない旨を通知する
   ansible.builtin.debug:
     msg: "{{ patch_directory }} に python-urllib3 の rpm が無いため、python-urllib3 の復旧処理は実施しません。"
   when: __rhel_pre_reboot_recovery_urllib3_rpm_search['files'] | length == 0
- 
+
 - name: python-urllib3 のシンボリックリンク復旧を実施する
   when: __rhel_pre_reboot_recovery_urllib3_rpm_search['files'] | length > 0
   vars:
@@ -30,7 +30,8 @@
       {{ __rhel_pre_reboot_recovery_urllib3_rpm_search['files'] | map(attribute='path') | sort | list }}
     __rhel_pre_reboot_recovery_backup_suffix: >-
       .bak_{{ ansible_facts['date_time']['year'] }}{{ ansible_facts['date_time']['month'] }}{{ ansible_facts['date_time']['day'] }}
-    __rhel_pre_reboot_recovery_symlink_before_entries: "{{ __rhel_pre_reboot_recovery_symlink_before['files'] }}"
+    __rhel_pre_reboot_recovery_symlink_before_entries: >-
+      {{ __rhel_pre_reboot_recovery_symlink_before_stat['results'] | map(attribute='stat') | sort(attribute='path') | list }}
     __rhel_pre_reboot_recovery_symlink_before_targets: >-
       {{ __rhel_pre_reboot_recovery_symlink_before_entries | rejectattr('islnk') | map(attribute='path') | list }}
     __rhel_pre_reboot_recovery_needs_recovery: >-
@@ -38,10 +39,12 @@
         (__rhel_pre_reboot_recovery_symlink_before_entries | length == 0)
         or (__rhel_pre_reboot_recovery_symlink_before_targets | length > 0)
       }}
+    __rhel_pre_reboot_recovery_symlink_after_entries: >-
+      {{ __rhel_pre_reboot_recovery_symlink_after_stat['results'] | map(attribute='stat') | sort(attribute='path') | list }}
     __rhel_pre_reboot_recovery_version_before: "{{ __rhel_pre_reboot_recovery_rpm_before['stdout_lines'] }}"
     __rhel_pre_reboot_recovery_version_after: "{{ __rhel_pre_reboot_recovery_rpm_after['stdout_lines'] }}"
   block:
- 
+
 # ==================================================
 # 2. シンボリックリンクの現状確認（before）
 #   ssl_match_hostname* の状態を保存し、シンボリックリンクでないものがある場合のみ項番 3 以降を実施する
@@ -50,42 +53,48 @@
       ansible.builtin.file:
         path: "{{ base_directory }}"
         state: directory
- 
-    - name: ssl_match_hostname の現状（ls -l 相当）を取得する（before）
+
+    - name: ssl_match_hostname の対象一覧を検索する（before）
       ansible.builtin.find:
         paths: "{{ __rhel_pre_reboot_recovery_urllib3_packages_dir }}"
         patterns: "{{ __rhel_pre_reboot_recovery_urllib3_link_pattern }}"
         excludes: "*.bak_*"
         file_type: any
         recurse: false
-      register: __rhel_pre_reboot_recovery_symlink_before
- 
+      register: __rhel_pre_reboot_recovery_symlink_before_find
+
+    - name: ssl_match_hostname の詳細情報（リンク先含む）を取得する（before）
+      ansible.builtin.stat:
+        path: "{{ item['path'] }}"
+        follow: false
+      register: __rhel_pre_reboot_recovery_symlink_before_stat
+      loop: "{{ __rhel_pre_reboot_recovery_symlink_before_find['files'] }}"
+
     - name: ssl_match_hostname の現状を base_directory に保存する（before）
       ansible.builtin.copy:
         dest: "{{ [base_directory, 'python_urllib3_symlink_before'] | path_join }}"
         content: |
-          {% for __entry in __rhel_pre_reboot_recovery_symlink_before['files'] | sort(attribute='path') %}
-          {{ 'l' if __entry['islnk'] else ('d' if __entry['isdir'] else '-') }} {{ __entry['mode'] }} {{ __entry['pw_name'] | default(__entry['uid']) }} {{ __entry['gr_name'] | default(__entry['gid']) }} {{ __entry['size'] }} {{ __entry['path'] }}{% if __entry['islnk'] %} -> {{ __entry['lnk_source'] | default('') }}{% endif %}
- 
+          {% for __entry in __rhel_pre_reboot_recovery_symlink_before_entries %}
+          {{ 'l' if __entry['islnk'] else ('d' if __entry['isdir'] else '-') }} {{ __entry['mode'] }} {{ __entry['pw_name'] | default(__entry['uid']) }} {{ __entry['gr_name'] | default(__entry['gid']) }} {{ __entry['size'] }} {{ __entry['path'] }}{% if __entry['islnk'] %} -> {{ __entry['lnk_target'] | default('') }}{% endif %}
           {% else %}
           {{ __rhel_pre_reboot_recovery_urllib3_packages_dir }}/{{ __rhel_pre_reboot_recovery_urllib3_link_pattern }} は存在しません
           {% endfor %}
         mode: "0644"
- 
+
     - name: ssl_match_hostname がシンボリックリンクの場合は復旧不要と通知する
       ansible.builtin.debug:
         msg: "ssl_match_hostname は既にシンボリックリンクのため、復旧処理は実施しません。"
       when: not (__rhel_pre_reboot_recovery_needs_recovery | bool)
- 
+
     - name: シンボリックリンクでない場合のみ python-urllib3 を再適用する
       when: __rhel_pre_reboot_recovery_needs_recovery | bool
       block:
- 
+
 # ==================================================
 # 3. バージョンの現状確認（before）
 #   python-urllib3 のバージョンを rpm で取得して保存する
 # ==================================================
- 
+
         # 参照のみで変更は行わないため changed_when を false にし、チェックモードでも実行する。
         # 要件として rpm による取得としているため command を使用する。
         - name: rpm から python-urllib3 のバージョンを取得する（before）
@@ -99,23 +108,23 @@
           register: __rhel_pre_reboot_recovery_rpm_before
           changed_when: false
           check_mode: false
- 
+
         - name: python-urllib3 のバージョンを base_directory に保存する（before）
           ansible.builtin.copy:
             dest: "{{ [base_directory, 'python_urllib3_version_before'] | path_join }}"
             content: >-
               {{
-                (__rhel_pre_reboot_recovery_version_before | join('\n'))
+                ((__rhel_pre_reboot_recovery_version_before | join('\n'))
                 if (__rhel_pre_reboot_recovery_version_before | length > 0)
-                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')
+                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')) ~ '\n'
               }}
             mode: "0644"
- 
+
 # ==================================================
 # 4. ファイルの退避
 #   シンボリックリンクでない ssl_match_hostname* を <パス>.bak_YYYYMMDD に退避し、退避先の存在を確認する
 # ==================================================
- 
+
         # ansible.builtin に rename を行うモジュールがないため command を使用する。
         # creates により、同日に退避済みの場合は再実行しても二重退避しない。
         - name: シンボリックリンクでない ssl_match_hostname を退避する
@@ -128,13 +137,13 @@
           changed_when: true
           become: true
           loop: "{{ __rhel_pre_reboot_recovery_symlink_before_targets }}"
- 
+
         - name: 退避先の存在を取得する
           ansible.builtin.stat:
             path: "{{ item }}{{ __rhel_pre_reboot_recovery_backup_suffix }}"
           register: __rhel_pre_reboot_recovery_backup_stat
           loop: "{{ __rhel_pre_reboot_recovery_symlink_before_targets }}"
- 
+
         - name: 退避したファイル・ディレクトリが存在することを確認する
           ansible.builtin.assert:
             that:
@@ -144,16 +153,16 @@
               {{ __rhel_pre_reboot_recovery_urllib3_packages_dir }} を確認し、
               mv の失敗原因を調査してください。
             success_msg: "退避先の存在を確認しました。"
- 
+
 # ==================================================
 # 5. パッケージの再適用と事後確認
 #   項番 1 で見つかった rpm を再適用し、シンボリックリンク化とバージョンアップを確認する
 # ==================================================
- 
+
 # --------------------------------------------------
 # 5-1. rpm の再適用
 # --------------------------------------------------
- 
+
         # rpm -Uvh --replacepkgs は同一バージョンの再インストールも行う必要があり、
         # dnf/yum モジュールでは同等の動作にならないため command を使用する。
         - name: python-urllib3 の rpm を再適用する
@@ -161,49 +170,55 @@
             argv: "{{ ['rpm', '-Uvh', '--replacepkgs'] + __rhel_pre_reboot_recovery_urllib3_rpm_paths }}"
           changed_when: true
           become: true
- 
+
 # --------------------------------------------------
 # 5-2. シンボリックリンクの事後確認（after）
 #   シンボリックリンクになっていない場合はエラーとする
 # --------------------------------------------------
-        - name: ssl_match_hostname の現状（ls -l 相当）を取得する（after）
+        - name: ssl_match_hostname の対象一覧を検索する（after）
           ansible.builtin.find:
             paths: "{{ __rhel_pre_reboot_recovery_urllib3_packages_dir }}"
             patterns: "{{ __rhel_pre_reboot_recovery_urllib3_link_pattern }}"
             excludes: "*.bak_*"
             file_type: any
             recurse: false
-          register: __rhel_pre_reboot_recovery_symlink_after
- 
+          register: __rhel_pre_reboot_recovery_symlink_after_find
+
+        - name: ssl_match_hostname の詳細情報（リンク先含む）を取得する（after）
+          ansible.builtin.stat:
+            path: "{{ item['path'] }}"
+            follow: false
+          register: __rhel_pre_reboot_recovery_symlink_after_stat
+          loop: "{{ __rhel_pre_reboot_recovery_symlink_after_find['files'] }}"
+
         - name: ssl_match_hostname の現状を base_directory に保存する（after）
           ansible.builtin.copy:
             dest: "{{ [base_directory, 'python_urllib3_symlink_after'] | path_join }}"
             content: |
-              {% for __entry in __rhel_pre_reboot_recovery_symlink_after['files'] | sort(attribute='path') %}
-              {{ 'l' if __entry['islnk'] else ('d' if __entry['isdir'] else '-') }} {{ __entry['mode'] }} {{ __entry['pw_name'] | default(__entry['uid']) }} {{ __entry['gr_name'] | default(__entry['gid']) }} {{ __entry['size'] }} {{ __entry['path'] }}{% if __entry['islnk'] %} -> {{ __entry['lnk_source'] | default('') }}{% endif %}
- 
+              {% for __entry in __rhel_pre_reboot_recovery_symlink_after_entries %}
+              {{ 'l' if __entry['islnk'] else ('d' if __entry['isdir'] else '-') }} {{ __entry['mode'] }} {{ __entry['pw_name'] | default(__entry['uid']) }} {{ __entry['gr_name'] | default(__entry['gid']) }} {{ __entry['size'] }} {{ __entry['path'] }}{% if __entry['islnk'] %} -> {{ __entry['lnk_target'] | default('') }}{% endif %}
               {% else %}
               {{ __rhel_pre_reboot_recovery_urllib3_packages_dir }}/{{ __rhel_pre_reboot_recovery_urllib3_link_pattern }} は存在しません
               {% endfor %}
             mode: "0644"
- 
+
         - name: ssl_match_hostname がシンボリックリンクになったことを確認する
           ansible.builtin.assert:
             that:
-              - __rhel_pre_reboot_recovery_symlink_after['files'] | length > 0
-              - __rhel_pre_reboot_recovery_symlink_after['files'] | rejectattr('islnk') | list | length == 0
+              - __rhel_pre_reboot_recovery_symlink_after_entries | length > 0
+              - __rhel_pre_reboot_recovery_symlink_after_entries | rejectattr('islnk') | list | length == 0
             fail_msg: >-
               rpm 再適用後も ssl_match_hostname がシンボリックリンクになっていません。
               {{ [base_directory, 'python_urllib3_symlink_after'] | path_join }}
               を確認し、再適用した rpm の内容を調査してください。
             success_msg: "ssl_match_hostname がシンボリックリンクになりました。"
- 
+
 # --------------------------------------------------
 # 5-3. バージョンの事後確認（after）
 #   before と比較してバージョンが上がっていない場合はエラーとする
 #   before を取得できていない場合は比較しない
 # --------------------------------------------------
- 
+
         # 参照のみで変更は行わないため changed_when を false にし、チェックモードでも実行する。
         # 要件として rpm による取得としているため command を使用する。
         - name: rpm から python-urllib3 のバージョンを取得する（after）
@@ -217,25 +232,25 @@
           register: __rhel_pre_reboot_recovery_rpm_after
           changed_when: false
           check_mode: false
- 
+
         - name: python-urllib3 のバージョンを base_directory に保存する（after）
           ansible.builtin.copy:
             dest: "{{ [base_directory, 'python_urllib3_version_after'] | path_join }}"
             content: >-
               {{
-                (__rhel_pre_reboot_recovery_version_after | join('\n'))
+                ((__rhel_pre_reboot_recovery_version_after | join('\n'))
                 if (__rhel_pre_reboot_recovery_version_after | length > 0)
-                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')
+                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')) ~ '\n'
               }}
             mode: "0644"
- 
+
         - name: 事前のバージョン取得結果が無いため、バージョン比較を実施しない旨を通知する
           ansible.builtin.debug:
             msg: >-
               再適用前に python-urllib3 のバージョンを取得できていないため、バージョン比較は実施しません。
               再適用後のバージョン: {{ __rhel_pre_reboot_recovery_version_after | join(', ') }}
           when: __rhel_pre_reboot_recovery_version_before | length == 0
- 
+
         - name: python-urllib3 のバージョンが上がったことを確認する
           ansible.builtin.assert:
             that:
@@ -250,4 +265,3 @@
               python-urllib3 のバージョンが上がりました
               ({{ __rhel_pre_reboot_recovery_version_before | join(', ') }} -> {{ __rhel_pre_reboot_recovery_version_after | join(', ') }})
           when: __rhel_pre_reboot_recovery_version_before | length > 0
-
