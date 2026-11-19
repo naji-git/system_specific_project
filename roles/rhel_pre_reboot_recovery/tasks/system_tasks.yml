@@ -112,12 +112,12 @@
         - name: python-urllib3 のバージョンを base_directory に保存する（before）
           ansible.builtin.copy:
             dest: "{{ [base_directory, 'python_urllib3_version_before'] | path_join }}"
-            content: >-
-              {{
-                ((__rhel_pre_reboot_recovery_version_before | join('\n'))
-                if (__rhel_pre_reboot_recovery_version_before | length > 0)
-                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')) ~ '\n'
-              }}
+            content: |
+              {% for __version in __rhel_pre_reboot_recovery_version_before %}
+              {{ __version }}
+              {% else %}
+              {{ __rhel_pre_reboot_recovery_urllib3_package_name }} はインストールされていません
+              {% endfor %}
             mode: "0644"
 
 # ==================================================
@@ -236,12 +236,12 @@
         - name: python-urllib3 のバージョンを base_directory に保存する（after）
           ansible.builtin.copy:
             dest: "{{ [base_directory, 'python_urllib3_version_after'] | path_join }}"
-            content: >-
-              {{
-                ((__rhel_pre_reboot_recovery_version_after | join('\n'))
-                if (__rhel_pre_reboot_recovery_version_after | length > 0)
-                else (__rhel_pre_reboot_recovery_urllib3_package_name ~ ' はインストールされていません')) ~ '\n'
-              }}
+            content: |
+              {% for __version in __rhel_pre_reboot_recovery_version_after %}
+              {{ __version }}
+              {% else %}
+              {{ __rhel_pre_reboot_recovery_urllib3_package_name }} はインストールされていません
+              {% endfor %}
             mode: "0644"
 
         - name: 事前のバージョン取得結果が無いため、バージョン比較を実施しない旨を通知する
