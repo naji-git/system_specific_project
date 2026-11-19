@@ -4,6 +4,9 @@
 is_develop_env: true
 #is_develop_env: false
 
+base_directory: "/home/ansible/rhel_patch"
+patch_directory: "/home/ansible/patch"
+
 ###is_develop_env: trueの有効化
 
 rhel_pre_check_httpd_services:
