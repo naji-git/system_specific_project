@@ -7,7 +7,7 @@ is_develop_env: true
 base_directory: "/home/ansible/rhel_patch"
 patch_directory: "/home/ansible/patch"
 
-httpd_in_use: false
+httpd_in_use: true
 
 ###is_develop_env: trueの有効化
 
