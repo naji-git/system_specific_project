@@ -49,7 +49,7 @@
 # 2. シンボリックリンクの現状確認（before）
 #   ssl_match_hostname* の状態を保存し、シンボリックリンクでないものがある場合のみ項番 3 以降を実施する
 # ==================================================
-    - name: base_directory の存在を保証する
+    - name: base_directory の存在を確認する
       ansible.builtin.file:
         path: "{{ base_directory }}"
         state: directory
